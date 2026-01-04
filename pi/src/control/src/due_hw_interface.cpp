@@ -75,9 +75,9 @@ void openPort()	{
 	tty.c_cc[VTIME] = 0;
 	tty.c_cc[VMIN]	= 0; // trusting ROS2 callbacks to handle r/w scheduling
 
-	// set i/o baud rates to 9600; consider increasing if no issues
-	cfsetispeed(&tty, B9600);	
-	cfsetospeed(&tty, B9600);
+	// set i/o baud rates to 57600; consider increasing if no issues
+	cfsetispeed(&tty, B57600);	
+	cfsetospeed(&tty, B57600);
 
 	// maybe should change to TCSANOW - went drain because don't want 2 sets
 	// of a single type of data making it though on the same message
@@ -87,30 +87,29 @@ void openPort()	{
 }
 
 void readUART(char * buf, size_t bufsize)	{
-	read(serialPort, buf, bufsize);
+	std::cout << "bytes read: \t" << read(serialPort, buf, bufsize) << std::endl;
 }
 
 void writeUART(char * msg, size_t msgsize)	{
 	// v probably need to send/recieve these messages as delimited strings
-	write(serialPort, msg, msgsize);
+	std::cout << "bytes written: \t" << write(serialPort, msg, msgsize) << std::endl;
 }
 
 int main(int argc, char** argv)	{
 	openPort();
 
 	// NOTE: arduino seems to need ~150ms setup time more than pi to init port
-	std::this_thread::sleep_for(std::chrono::milliseconds(150)); 
+	std::this_thread::sleep_for(std::chrono::milliseconds(100)); 
 	UARTmsgs::WheelSpeed k { 0, 0, 0, 0 };
-	UARTmsgs::WheelSpeed j { 0, 0, 0, 0 };
 	for (int i = -128; i <= 127; ++i)	{
 		k.FR = k.FL = k.BR = k.BL = i;
 		k.encodeMsg();
 		std::cout << "Sending message: " << k.msg << std::endl;
-		writeUART(k.msg, UARTmsgs::MSG_SIZE);
-		std::this_thread::sleep_for(std::chrono::milliseconds(500)); 
-		readUART(j.msg, UARTmsgs::MSG_SIZE)
-		std::cout << "Receiving message: " << j.msg << std::endl;
-		std::this_thread::sleep_for(std::chrono::milliseconds(500)); 
+		writeUART(k.msg, UARTmsgs::WheelSpeed::MSG_SIZE);
+		std::this_thread::sleep_for(std::chrono::milliseconds(100)); 
+		readUART(k.msg, UARTmsgs::WheelSpeed::MSG_SIZE);
+		std::cout << "Receiving message: " << k.msg << std::endl << std::endl;
+		std::this_thread::sleep_for(std::chrono::milliseconds(100)); 
 	}
 
 	closePort();
