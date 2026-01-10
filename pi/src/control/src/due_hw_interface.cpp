@@ -109,13 +109,14 @@ void DueInterfaceNode::openPort()	{
 	serialPort = open(UART_PORT, O_RDWR);
 
 	if (serialPort < 0)	{ // should return error code, or set an isValid param
-		std::cerr << "Error " << errno << ": " << std::strerror(errno) << std::endl;
-	} // tbh, should probably exit function at this point... leaving for now
-	// actually should prob just display as a ROS warning
+		RCLCPP_ERROR_STREAM(this->get_logger(), 
+			"Error " << errno << ": " << std::strerror(errno));
+	} 
 
 	struct termios tty;
 	if (tcgetattr(serialPort, &tty) != 0)	{ // should return error code
-		std::cerr << "Error " << errno << ": " << std::strerror(errno) << std::endl;
+		RCLCPP_ERROR_STREAM(this->get_logger(),
+			"Error " << errno << ": " << std::strerror(errno));
 	}
 
 	// configuring termios; prob don't need a lot of these, but shouldn't hurt
@@ -140,7 +141,8 @@ void DueInterfaceNode::openPort()	{
 	// maybe should change to TCSANOW - went drain because don't want 2 sets
 	// of a single type of data making it though on the same message
 	if (tcsetattr(serialPort, TCSADRAIN, &tty) != 0)	{
-		std::cerr << "Error " << errno << ": " << std::strerror(errno) << std::endl;
+		RCLCPP_ERROR_STREAM(this->get_logger(),
+			"Error " << errno << ": " << std::strerror(errno)); 
 	}
 }
 
