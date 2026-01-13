@@ -18,6 +18,7 @@
 	</material>
 
 	<!-- LINK DEFINITIONS -->
+	<link name="base_footprint" /> 
 	<link name="base_link">
 		<visual>
 			<geometry>
@@ -80,6 +81,12 @@
 	</link>
 
 	<!-- JOINT DEFINITIONS -->
+	<joint name="floor_joint" type="fixed">
+		<parent link="base_footprint" />
+		<child link="base_link" />
+		<origin xyz="0 0 0.025" rpy="0 0 0" />
+	</joint>
+
 	<joint name="base_lidar_joint" type="fixed">
 		<parent link="base_link" />
 		<child link="lidar" />
