@@ -1,0 +1,117 @@
+<?xml version="1.0"?>
+<robot name="DCMR-4W01">
+	<!-- MATERIALS -->
+	<material name="grey">
+		<color rgba="0.7 0.7 0.7 1.0" />
+	</material>
+	<material name="blue">
+		<color rgba="0.0 0.0 1.0 1.0" />
+	</material>
+	<material name="trans-blue">
+		<color rgba="0.0 0.0 1.0 0.85" />
+	</material>
+	<material name="trans-teal">
+		<color rgba="0.0 1.0 1.0 0.85" />
+	</material>
+	<material name="black">
+		<color rgba="0.1 0.1 0.1 1.0" />
+	</material>
+
+	<!-- LINK DEFINITIONS -->
+	<link name="base_link">
+		<visual>
+			<geometry>
+				<!--MAKE SURE TO UPDATE THIS WITH ACTUAL ROBOT DIMS - L W H	-->
+				<box size="0.3 0.2 0.1" /> 
+			</geometry>
+			<origin xyz="0.0 0.0 0.05" rpy="0.0 0.0 0.0" />
+			<material name="trans-teal" />
+		</visual>
+	</link>
+
+	<link name="fl_wheel">
+		<visual>
+			<geometry>
+				<cylinder radius="0.06" length="0.031" />
+			</geometry>
+			<origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0" />
+			<material name="black" />
+		</visual>
+	</link>
+
+	<link name="fr_wheel">
+		<visual>
+			<geometry>
+				<cylinder radius="0.06" length="0.031" />
+			</geometry>
+			<origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0" />
+			<material name="black" />
+		</visual>
+	</link>
+	
+	<link name="bl_wheel">
+		<visual>
+			<geometry>
+				<cylinder radius="0.06" length="0.031" />
+			</geometry>
+			<origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0" />
+			<material name="black" />
+		</visual>
+	</link>
+
+	<link name="br_wheel">
+		<visual>
+			<geometry>
+				<cylinder radius="0.06" length="0.031" />
+			</geometry>
+			<origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0" />
+			<material name="black" />
+		</visual>
+	</link>
+
+	<link name="lidar">
+		<visual>
+			<geometry>
+				<cylinder radius="0.05" length="0.025" />
+			</geometry>
+			<origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0" />
+			<material name="black" />
+		</visual>
+	</link>
+
+	<!-- JOINT DEFINITIONS -->
+	<joint name="base_lidar_joint" type="fixed">
+		<parent link="base_link" />
+		<child link="lidar" />
+		<origin xyz="0.0 0.0 0.1125" rpy="0.0 0.0 0.0" />
+	</joint>
+
+	<joint name="base_fl_wheel_joint" type="continuous">
+		<parent link="base_link" />
+		<child link="fl_wheel" />
+		<origin xyz="0.1 0.115 0.025" rpy="1.57 0.0 0.0" />
+		<axis xyz="0 0 -1" />
+	</joint>
+
+	<joint name="base_fr_wheel_joint" type="continuous">
+		<parent link="base_link" />
+		<child link="fr_wheel" />
+		<origin xyz="0.1 -0.115 0.025" rpy="1.57 0.0 0.0" />
+		<axis xyz="0 0 -1" />
+	</joint>
+
+	<joint name="base_bl_wheel_joint" type="continuous">
+		<parent link="base_link" />
+		<child link="bl_wheel" />
+		<origin xyz="-0.1 0.115 0.025" rpy="1.57 0.0 0.0" />
+		<axis xyz="0 0 -1" />
+	</joint>
+
+	<joint name="base_br_wheel_joint" type="continuous">
+		<parent link="base_link" />
+		<child link="br_wheel" />
+		<origin xyz="-0.1 -0.115 0.025" rpy="1.57 0.0 0.0" />
+		<axis xyz="0 0 -1" />
+	</joint>
+
+</robot>
