@@ -10,8 +10,6 @@
 
 	auth: @dchayto
 */
-#undef ROS2 // don't want to deal with this until serial comms worked out
-
 #include <termios.h>	// POSIX terminal control definitions	
 #include <unistd.h> 	// write(), read(), close()
 #include <fcntl.h>	// file controls 
@@ -24,7 +22,6 @@
 #include <thread> // ^^
 
 #include "rclcpp/rclcpp.hpp"
-#include "nav_msgs/msg/odometry.hpp"
 #include "control/msg/wheelspeed.hpp"
 
 #include "UARTmsgs.hpp"
@@ -63,9 +60,11 @@ public:
 		encoderTimer = this->create_wall_timer(1s, 
 			[this]()
 			{
+				// TBH odom should be its own node - this should just publish
+				// encoder states
+
 				// read odom message from due, publish to topic 
 				readUART();		
-				//... message should be nav_msgs::msg::Odometry
 				auto odomMsg = nav_msgs::msg::Odometry();
 				odomMsg.header = ;
 				odomMsg.child_frame_id = ;
@@ -74,13 +73,13 @@ public:
 				this->odom_publisher->publish(odomMsg);
 			};)
 		*/
-	}
+	} // constructor
 	
 	~DueInterfaceNode()
 	{
 		RCLCPP_INFO(this->get_logger(), "DueInterfaceNode shutting down.");
 		closePort();
-	}
+	} // destructor
 
 
 private:
@@ -89,7 +88,6 @@ private:
 	int serialPort; 
 	UARTmsgs::WheelSpeed ws_;
 	rclcpp::Subscription<control::msg::Wheelspeed>::SharedPtr ws_subscription;
-	rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_publisher;
 	rclcpp::TimerBase::SharedPtr encoderTimer;
 
 	// helper functions
@@ -100,8 +98,6 @@ private:
 };
 
 void DueInterfaceNode::closePort()	{
-	// move this line into ROS2 node destructor at some point
-	// not sure if i have to check for valid file before closing
 	close(serialPort);
 }
 
