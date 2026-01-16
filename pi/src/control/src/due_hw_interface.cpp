@@ -71,7 +71,7 @@ public:
 				odomMsg.pose = ;
 				odomMsg.twist = ;
 				this->odom_publisher->publish(odomMsg);
-			};)
+			});
 		*/
 	} // constructor
 	
@@ -80,7 +80,6 @@ public:
 		RCLCPP_INFO(this->get_logger(), "DueInterfaceNode shutting down.");
 		closePort();
 	} // destructor
-
 
 private:
 	// member variables

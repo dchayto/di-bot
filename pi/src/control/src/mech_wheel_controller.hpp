@@ -5,6 +5,8 @@
 	auth: @dchayto
 */
 
+#include <cmath>
+
 inline const double WHEEL_RADIUS	{ (60.0 / 2.0) / 1000.0 };		// [m]
 inline const double WHEELBASE		{ 0.20 };	// [m]
 inline const double TRACK_WIDTH		{ 0.20 };	// [m] - assumes CoM centred
@@ -14,14 +16,32 @@ inline const double TRACK_WIDTH		{ 0.20 };	// [m] - assumes CoM centred
 struct twist	{
 	double x {0.0};		// linear x velocity [m/s]
 	double y {0.0};		// linear y velocity [m/s]
-	double w {0.0};		// angular z velocity [rad/s]
+	double w {0.0};		// angular z velocity [rad/s]	
+
+	double getLength() const	{
+		return std::sqrt(std::pow(x, 2.0) + std::pow(y, 2.0) + std::pow(w, 2.0));
+	}
 }
 
 
-// using v, w output from controller, calculate ith wheelspeed based on 
-// vehicle kinematics 
-MechWheelControllerNode::getWS(int8_t& wheel_i)	{
-
-
+// using output from controller, calculate wheelspeeds based on kin model
+int8_t MechWheelControllerNode::getFrontRightWS()
+{
 
 }
+
+int8_t MechWheelControllerNode::getFrontLeftWS()
+{
+
+}
+
+int8_t MechWheelControllerNode::getBackRightWS();
+{
+
+}
+
+int8_t MechWheelControllerNode::getBackLeftWS();
+{
+
+}
+

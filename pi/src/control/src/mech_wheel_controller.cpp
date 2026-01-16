@@ -17,7 +17,7 @@
 #include "geometry_msgs/msg/Twist"
 #include "control/msg/wheelspeed.hpp"
 
-#include "mech_wheel_controller.hpp" 	// splitting up helper functions
+#include "mech_wheel_controller.hpp" 	// splitting up helper functions/consts
 
 class MechWheelControllerNode : public rclcpp::Node
 {
@@ -26,32 +26,78 @@ public:
 	 : Node("mech_controller_node")
 	{
 		// SUBSCRIBERS
-		// node should subscribe to controller input message, as well as
-		// body twist message from sensor fusion; these should be fed into
-		// the controller to set u and v, which are then fed to the kinematic
-		// model to determine the required wheelspeed commands
+		input_twist_subscription = this->create_subscription<geometry_msgs::msg::Twist>
+			("input_cmd", 1,
+			[this](const geometry_msgs::msg::Twist& icMsg)
+			{
+				cmdTwist.x = icMsg.linear.x;
+				cmdTwist.y = icMsg.linear.y;
+				cmdTwist.w = icMsg.angular.z;
+			});
+		measured_twist_subscription = this->create_subscription<geometry_msgs::msg::Twist>
+			("body_twist", 1,
+			[this](const geometry_msgs::msg::Twist& btMsg)
+			{
+				belTwist.x = btMsg.linear.x;
+				belTwist.y = btMsg.linear.y;
+				belTwist.w = btMsg.angular.z;
+			});
+	
 
-		
 		// PUBLISHERS
-		// node should 
+		// node should take input error signals, send to controller to set new
+		// desired twist, which should then go to kinematic model to determine
+		// the required wheelspeed commands 
+		ws_publisher = this->create_publisher<control::msg::Wheelspeed>("wheelspeed", 1);
+		wsTimer = this->create_wall_timer(1s,
+			[this]()
+			{
+				// get control signal; for now, just considering direction of
+				// velocity vectors, not magnitude
 
-	} // constructor
+				// pre-computing scale factor; equivalent to norm both vectors,
+				// then multiply by magnitude of cmd vector
+				static double twistSF = cmdTwist.getLength() / belTwist.getLength(); 
 
+				ctrlTwist.x = cmdTwist.x - twistSF*belTwist.x;
+				ctrlTwist.y = cmdTwist.y - twistSF*belTwist.y;
+				ctrlTwist.w = cmdTwist.w - twistSF*belTwist.w;
 
+				// using control signal, get wheelspeeds
+				auto wsMsg = control::msg::Wheelspeed();
+				wsMsg.front_right 	= this->getFrontRightWS();
+				wsMsg.front_left 	= this->getFrontLeftWS();
+				wsMsg.back_right 	= this->getBackRightWS();
+				wsMsg.back_left 	= this->getBackLeftWS();
+				this->ws_publisher->publish(wsMsg);
+			});
+		
+	} // </constructor>
 
-
+	~MechWheelControllerNode()
+	{
+		RCLCPP_INFO(this->get_logger(), "MechWheelControllerNode shutting down.");
+	} // </destructor>
 
 private:
 	// member variables
 	// note: might not be practicable to use velocities directly; should
 	// consider just using relative values for body twists, and converting
 	// sensor twist value into relative values
+	twist cmdTwist {0.0, 0.0, 0.0}; // commanded twist [x, y, w]
+	twist belTwist {0.0, 0.0, 0.0}; // belief twist [x, y, w]
+	twist ctrlTwist {0.0, 0.0, 0.0};	// control signal twist [x, y, w]
+
+	rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr input_twist_subscription;
+	rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr measured_twist_subscription;
 	rclcpp::Publisher<control::msg::Wheelspeed>::SharedPtr ws_publisher;
-	twist twist_cmd {0.0, 0.0, 0.0}; // commanded twist [x, y, w]
-	twist twist_msr {0.0, 0.0, 0.0}; // measured twist [x, y, w]
+	rclcpp::TimerBase::SharedPtr wsTimer;
 
 	// helper functions
-	int8_t getWS(int8_t& wheel_i);		// all other params are member vars
+	int8_t getFrontRightWS();
+	int8_t getFrontLeftWS();
+	int8_t getBackRightWS();
+	int8_t getBackLeftWS();
 
 }; // class
 
