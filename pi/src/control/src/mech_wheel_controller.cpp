@@ -45,9 +45,6 @@ public:
 	
 
 		// PUBLISHERS
-		// node should take input error signals, send to controller to set new
-		// desired twist, which should then go to kinematic model to determine
-		// the required wheelspeed commands 
 		ws_publisher = this->create_publisher<control::msg::Wheelspeed>("wheelspeed", 1);
 		wsTimer = this->create_wall_timer(1s,
 			[this]()
@@ -57,7 +54,8 @@ public:
 
 				// pre-computing scale factor; equivalent to norm both vectors,
 				// then multiply by magnitude of cmd vector
-				static double twistSF = cmdTwist.getLength() / belTwist.getLength(); 
+				static double twistSF {};
+				twistSF = cmdTwist.getLength() / belTwist.getLength(); 
 
 				ctrlTwist.x = cmdTwist.x - twistSF*belTwist.x;
 				ctrlTwist.y = cmdTwist.y - twistSF*belTwist.y;
