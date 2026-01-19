@@ -10,8 +10,8 @@
 inline const double WHEEL_RADIUS	{ (60.0 / 2.0) / 1000.0 };		// [m]
 inline const double WHEELBASE		{ 0.20 };	// [m]
 inline const double TRACK_WIDTH		{ 0.20 };	// [m] - assumes CoM centred
-inline const double PI				{ std::acos( -1.0 }		
-inline const double MECH_ANGLE		{ ::PI / 4.0 }	// radians, pos value
+inline const double PI				{ std::acos( -1.0 };
+inline const double MECH_ANGLE		{ ::PI / 4.0 };	// radians, pos value
 
 // could really just use an array, but might be nice to be able to refer
 // to as "twist.x" instead of twist[0]
@@ -102,8 +102,6 @@ int8_t MechWheelControllerNode::getBackRightWS();
 	static double v_drive;
 	v_drive = G_X * ctrlTwist.x + G * ctrlTwist.y + G_W * ctrlTwist.w;
 	return v_drive / WHEEL_RADIUS;
-
-
 }
 
 int8_t MechWheelControllerNode::getBackLeftWS();
@@ -119,7 +117,5 @@ int8_t MechWheelControllerNode::getBackLeftWS();
 	static double v_drive;
 	v_drive = G_X * ctrlTwist.x + G * ctrlTwist.y + G_W * ctrlTwist.w;
 	return v_drive / WHEEL_RADIUS;
-
-
 }
 

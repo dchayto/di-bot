@@ -12,12 +12,14 @@
 */
 
 #include <cstdint>
+#include <algorithm>
 
 #include "rclcpp/rclcpp.hpp"
 #include "geometry_msgs/msg/Twist"
 #include "control/msg/wheelspeed.hpp"
 
 #include "mech_wheel_controller.hpp" 	// splitting up helper functions/consts
+#include "SharedValues.hpp"
 
 class MechWheelControllerNode : public rclcpp::Node
 {
@@ -54,19 +56,32 @@ public:
 
 				// pre-computing scale factor; equivalent to norm both vectors,
 				// then multiply by magnitude of cmd vector
-				static double twistSF {};
+				static double twistSF;
 				twistSF = cmdTwist.getLength() / belTwist.getLength(); 
 
 				ctrlTwist.x = cmdTwist.x - twistSF*belTwist.x;
 				ctrlTwist.y = cmdTwist.y - twistSF*belTwist.y;
 				ctrlTwist.w = cmdTwist.w - twistSF*belTwist.w;
 
+				// for now, scaling to [-128 127] based on set gain
+				static double fr, fl, br, bl;
+
+				fr = this->getFrontRightWS();
+				fl = this->getFrontLeftWS();
+				br = this->getBackRightWS();
+				bl = this->getBackLeftWS();
+
+				// this sucks
+				static double wheelSF;
+				wheelSF = (SharedValues::gain * 127) / std::max({
+					std::abs(fr), std::abs(fl), std::abs(br), std::abs(bl)});
+
 				// using control signal, get wheelspeeds
 				auto wsMsg = control::msg::Wheelspeed();
-				wsMsg.front_right 	= this->getFrontRightWS();
-				wsMsg.front_left 	= this->getFrontLeftWS();
-				wsMsg.back_right 	= this->getBackRightWS();
-				wsMsg.back_left 	= this->getBackLeftWS();
+				wsMsg.front_right 	= static_cast<int8_t>(fr * wheelSF);
+				wsMsg.front_left 	= static_cast<int8_t>(fl * wheelSF); 
+				wsMsg.back_right 	= static_cast<int8_t>(br * wheelSF); 
+				wsMsg.back_left 	= static_cast<int8_t>(bl * wheelSF); 
 				this->ws_publisher->publish(wsMsg);
 			});
 		
