@@ -19,7 +19,7 @@
 #include "control/msg/wheelspeed.hpp"
 
 #include "mech_wheel_controller.hpp" 	// splitting up helper functions/consts
-#include "SharedValues.hpp"
+#include "input.hpp"
 
 class MechWheelControllerNode : public rclcpp::Node
 {
@@ -37,7 +37,7 @@ public:
 				cmdTwist.w = icMsg.angular.z;
 			});
 		measured_twist_subscription = this->create_subscription<geometry_msgs::msg::Twist>
-			("body_twist", 1,
+			("bel_twist", 1,
 			[this](const geometry_msgs::msg::Twist& btMsg)
 			{
 				belTwist.x = btMsg.linear.x;
@@ -63,7 +63,7 @@ public:
 				ctrlTwist.y = cmdTwist.y - twistSF*belTwist.y;
 				ctrlTwist.w = cmdTwist.w - twistSF*belTwist.w;
 
-				// for now, scaling to [-128 127] based on set gain
+				// for now, scaling to [-127 127] based on set gain
 				static double fr, fl, br, bl;
 
 				fr = this->getFrontRightWS();
