@@ -7,6 +7,7 @@
 
 #include <cmath>
 
+// should really consider a more central location for this information
 inline const double WHEEL_RADIUS	{ (60.0 / 2.0) / 1000.0 };		// [m]
 inline const double WHEELBASE		{ 0.20 };	// [m]
 inline const double TRACK_WIDTH		{ 0.20 };	// [m] - assumes CoM centred

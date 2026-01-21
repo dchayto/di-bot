@@ -18,15 +18,12 @@
 #include <cstdlib>
 #include <cstring>	// for strerror
 
-#include <chrono> // for sleeping program during testing - can prob delete after
-#include <thread> // ^^
-
 #include "rclcpp/rclcpp.hpp"
 #include "control/msg/wheelspeed.hpp"
 
 #include "UARTmsgs.hpp"
 
-#define TESTING		// outputs additional messages to help with debugging
+#undef TESTING		// outputs additional messages to help with debugging
 
 
 class DueInterfaceNode : public rclcpp::Node
@@ -83,7 +80,7 @@ public:
 
 private:
 	// member variables
-	inline static const char UART_PORT[] = "/dev/ttyACM0";
+	inline static constexpr char UART_PORT[] = "/dev/ttyACM0";
 	int serialPort; 
 	UARTmsgs::WheelSpeed ws_;
 	rclcpp::Subscription<control::msg::Wheelspeed>::SharedPtr ws_subscription;
@@ -117,15 +114,12 @@ void DueInterfaceNode::openPort()	{
 	// configuring termios; prob don't need a lot of these, but shouldn't hurt
 	cfmakeraw(&tty);
 	tty.c_cflag &= ~CSTOPB;		// clear second stop bit
-	tty.c_cflag &= ~CRTSCTS;	// disable RTS flow control
-	tty.c_cflag |= CREAD | CLOCAL; 	// enable READ, ignore control lines
-
-	tty.c_lflag &= ~(ECHOE); 	// disable echoing
 
 	tty.c_iflag &= ~(IXOFF | IXANY);		// turn off s/w flow ctrl
 	
 	tty.c_oflag &= ~ONLCR;	// prevent conversion of nl to lfo
 
+	// maybe these should be VTIME 1, VMIN -> sizeof(msg)
 	tty.c_cc[VTIME] = 0;
 	tty.c_cc[VMIN]	= 0; // trusting ROS2 callbacks to handle r/w scheduling
 
@@ -133,8 +127,7 @@ void DueInterfaceNode::openPort()	{
 	cfsetispeed(&tty, B57600);	
 	cfsetospeed(&tty, B57600);
 
-	// maybe should change to TCSANOW - went drain because don't want 2 sets
-	// of a single type of data making it though on the same message
+	// going with TCSADRAIN since changing baud rate
 	if (tcsetattr(serialPort, TCSADRAIN, &tty) != 0)	{
 		RCLCPP_ERROR_STREAM(this->get_logger(),
 			"Error " << errno << ": " << std::strerror(errno)); 
