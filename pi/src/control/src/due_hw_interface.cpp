@@ -25,7 +25,6 @@
 
 #undef TESTING		// outputs additional messages to help with debugging
 
-
 class DueInterfaceNode : public rclcpp::Node
 {
 public:
@@ -139,6 +138,8 @@ void DueInterfaceNode::readUART(char * buf, size_t bufsize)	{
 }
 
 void DueInterfaceNode::writeUART(char * msg, size_t msgsize)	{
+	// flush buffer before writing so messages don't build up
+	tcflush(serialPort, TCOFLUSH);
 	write(serialPort, msg, msgsize); 
 }
 

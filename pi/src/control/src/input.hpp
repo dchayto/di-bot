@@ -3,8 +3,8 @@
 
 #include <cstdint>
 
-namespace commands	{
-	extern uint8_t gain; // speed gain [0, 100]; set by input handler
+namespace InputConstants	{
+	inline constexpr double ISR2	{ 0.707 }; // 1/sqrt(2)
 }
 
 namespace KeyboardConstants	{

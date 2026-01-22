@@ -26,7 +26,7 @@ auth: @dchayto
 
 #include "input.hpp"
 
-uint8_t commands::gain { 50 };	// from input.hpp 
+#undef TESTING
 
 class KeyboardHandlerNode : public rclcpp::Node
 {
@@ -60,6 +60,7 @@ private:
 	rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr input_twist_publisher;
 	rclcpp::TimerBase::SharedPtr inputTimer;
 	struct termios ogTermios; // termios struct before starting program
+	uint8_t gain {50};
 	
 	// member functions
 	void onKBTimer();
@@ -71,10 +72,10 @@ void KeyboardHandlerNode::onKBTimer()
 {
 	auto kbTwist = geometry_msgs::msg::Twist(); 
 
-	// check what current keyboard input is
+	// check what keyboard input is
 	// translate kb input into command
 	static char ch;
-	read(STDIN_FILENO, &ch, 1);
+	if (!read(STDIN_FILENO, &ch, 1)) ch = ' '; // default blank if no read
 
 	// duplicate assignments, but clearer this way
 	kbTwist.linear.x = 0;
@@ -82,35 +83,41 @@ void KeyboardHandlerNode::onKBTimer()
 	kbTwist.angular.z = 0;
 
 	// would be nice to be able to handle compound inputs... should look into this
-	using namespace KeyboardConstants;
+	using namespace KeyboardConstants;	// kb mappings
+	using namespace InputConstants;		// ISR2
 	switch (ch)	{
 		// basic movements:
-		case FWD:	 	kbTwist.linear.x =  1; 	break;
-		case LFT: 		kbTwist.linear.y = -1; 	break;
-		case REV: 		kbTwist.linear.x = -1; 	break;
-		case RHT:		kbTwist.linear.y =  1; 	break;
-		case FWD_RHT: 	kbTwist.linear.x =  1; kbTwist.linear.y =  1; 	break;
-		case FWD_LFT:	kbTwist.linear.x =  1; kbTwist.linear.y = -1; 	break;
-		case REV_LFT: 	kbTwist.linear.x = -1; kbTwist.linear.y = -1;	break;
-		case REV_RHT:	kbTwist.linear.x = -1; kbTwist.linear.y =  1;	break;
-		case TRN_LFT: 	kbTwist.angular.z = -1;	break;
-		case TRN_RHT: 	kbTwist.angular.z =  1;	break;
+		case FWD:	 	kbTwist.linear.x =  gain; 	break;
+		case LFT: 		kbTwist.linear.y = -gain; 	break;
+		case REV: 		kbTwist.linear.x = -gain; 	break;
+		case RHT:		kbTwist.linear.y =  gain; 	break;
+		case FWD_RHT: 	kbTwist.linear.x =  gain*ISR2;
+						kbTwist.linear.y =  gain*ISR2; 	break;
+		case FWD_LFT:	kbTwist.linear.x =  gain*ISR2; 
+						kbTwist.linear.y = -gain*ISR2; 	break;
+		case REV_LFT: 	kbTwist.linear.x = -gain*ISR2; 
+						kbTwist.linear.y = -gain*ISR2;	break;
+		case REV_RHT:	kbTwist.linear.x = -gain*ISR2;
+						kbTwist.linear.y =  gain*ISR2;	break;
+		case TRN_LFT: 	kbTwist.angular.z = -gain;	break;
+		case TRN_RHT: 	kbTwist.angular.z =  gain;	break;
 		case GAINUP:	
-			commands::gain += 1;
-			if (commands::gain > 100) commands::gain = 100;
+			gain += 1;
+			if (gain > 127) gain = 127;
 			break;
 		case GAINUP10:	// increase gain by 10
-			commands::gain += 10;
-			if (commands::gain > 100) commands::gain = 100;
+			gain += 10;
+			if (gain > 127) gain = 127;		// uint_8, so no chance of overflow
 			break;
 		case GAINDN:	// decrease gain by 1
-			if (commands::gain <= 1) { commands::gain = 0; }
-			else { commands::gain += 10; }
+			if (gain <= 1) { gain = 0; }
+			else { gain += 10; }
 			break;
 		case GAINDN10:	// decrease gain by 10
-			if (commands::gain <= 10) { commands::gain = 0; }
-			else { commands::gain -= 10; }
+			if (gain <= 10) { gain = 0; }
+			else { gain -= 10; }
 			break;
+		case '~': rclcpp::shutdown(); break; // can't ctrl-c out of this lol
 		case 'x':	// VEHICLE STOP
 		default: break; 	// invalid command; send {0} twist cmd
 	}
@@ -118,8 +125,15 @@ void KeyboardHandlerNode::onKBTimer()
 	// kbTwist.linear.z = 0;  // don't care about value
 	// kbTwist.angular.x = 0;  // don't care about value
 	// kbTwist.angular.y = 0;  // don't care about value
+	
+	#ifdef TESTING
+		RCLCPP_INFO(this->get_logger(), "Key registered: %c\n\n", ch);
+	#endif
 
 	this->input_twist_publisher->publish(kbTwist);	 // publish command
+	
+	// flush input buffer so old commands don't build up over time
+	tcflush(STDIN_FILENO, TCIFLUSH);
 } // </onKBTimer>
 
 void KeyboardHandlerNode::configureRaw(struct termios rawtty)	{
