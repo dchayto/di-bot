@@ -3,9 +3,9 @@
 	encoder and other sensor data)
 
 	node will listen on input_cmd topic (from mech_wheel_controller) and feed
-	framed message to due through UART interface (USBA-USBB)
+	framed message to due through serial interface (USBA-USBB)
 
-	data from due will also be read in through UART and published to various
+	data from due will also be read in through serial and published to various
 	topics, as appropriate (e.g., publishing encoder data, sensors, OBD, etc.)
 
 	auth: @dchayto
@@ -21,7 +21,7 @@
 #include "rclcpp/rclcpp.hpp"
 #include "control/msg/wheelspeed.hpp"
 
-#include "UARTmsgs.hpp"
+#include "serialMSG.hpp"
 
 #undef TESTING		// outputs additional messages to help with debugging
 
@@ -41,7 +41,7 @@ public:
 				// set ws_ based on received message, send to due
 				this->ws_.setWheelSpeed(wsMsg.front_right, wsMsg.front_left, 
 							wsMsg.back_right, wsMsg.back_left);
-				writeUART(this->ws_.msg, UARTmsgs::WheelSpeed::MSG_SIZE);
+				writeSerial(serialMSG::WheelSpeed::MAGIC_NUMBER + this->ws_.msg, serialMSG::WheelSpeed::FRAME_SIZE);
 				#ifdef TESTING
 				RCLCPP_INFO(this->get_logger(),
 						"Received wheelspeed: <%d %d %d %d>"
@@ -60,7 +60,7 @@ public:
 				// encoder states
 
 				// read odom message from due, publish to topic 
-				readUART();		
+				readPort();		
 				auto odomMsg = nav_msgs::msg::Odometry();
 				odomMsg.header = ;
 				odomMsg.child_frame_id = ;
@@ -79,17 +79,17 @@ public:
 
 private:
 	// member variables
-	inline static constexpr char UART_PORT[] = "/dev/ttyACM0";
+	inline static constexpr char SERIAL_PORT[] = "/dev/ttyACM0";
 	int serialPort; 
-	UARTmsgs::WheelSpeed ws_;
+	serialMSG::WheelSpeed ws_;
 	rclcpp::Subscription<control::msg::Wheelspeed>::SharedPtr ws_subscription;
 	rclcpp::TimerBase::SharedPtr encoderTimer;
 
 	// helper functions
 	void openPort();
 	void closePort();
-	void readUART(char * buf, size_t bufsize);
-	void writeUART(char * msg, size_t msgsize);
+	void readSerial(char * buf, size_t bufsize);
+	void writeSerial(char * msg, size_t msgsize);
 };
 
 void DueInterfaceNode::closePort()	{
@@ -97,7 +97,7 @@ void DueInterfaceNode::closePort()	{
 }
 
 void DueInterfaceNode::openPort()	{
-	serialPort = open(UART_PORT, O_RDWR);
+	serialPort = open(SERIAL_PORT, O_RDWR);
 
 	if (serialPort < 0)	{ // should return error code, or set an isValid param
 		RCLCPP_ERROR_STREAM(this->get_logger(), 
@@ -133,13 +133,11 @@ void DueInterfaceNode::openPort()	{
 	}
 }
 
-void DueInterfaceNode::readUART(char * buf, size_t bufsize)	{
+void DueInterfaceNode::readSerial(char * buf, size_t bufsize)	{
 	read(serialPort, buf, bufsize);
 }
 
-void DueInterfaceNode::writeUART(char * msg, size_t msgsize)	{
-	// flush buffer before writing so messages don't build up
-	tcflush(serialPort, TCOFLUSH);
+void DueInterfaceNode::writeSerial(char * msg, size_t msgsize)	{
 	write(serialPort, msg, msgsize); 
 }
 
@@ -148,14 +146,14 @@ int main(int argc, char** argv)	{
 	openPort();
 	// NOTE: arduino seems to need ~150ms setup time more than pi to init port
 	std::this_thread::sleep_for(std::chrono::milliseconds(100)); 
-	UARTmsgs::WheelSpeed k { 0, 0, 0, 0 };
+	serialMSG::WheelSpeed k { 0, 0, 0, 0 };
 	for (int i = -128; i <= 127; ++i)	{
 		k.FR = k.FL = k.BR = k.BL = i;
 		k.encodeMsg();
 		std::cout << "Sending message: " << k.msg << std::endl;
-		writeUART(k.msg, UARTmsgs::WheelSpeed::MSG_SIZE);
+		writeSerial(k.msg, serialMSG::WheelSpeed::MSG_SIZE);
 		std::this_thread::sleep_for(std::chrono::milliseconds(100)); 
-		readUART(k.msg, UARTmsgs::WheelSpeed::MSG_SIZE);
+		readSerial(k.msg, serialMSG::WheelSpeed::MSG_SIZE);
 		std::cout << "Receiving message: " << k.msg << std::endl << std::endl;
 		std::this_thread::sleep_for(std::chrono::milliseconds(100)); 
 	}

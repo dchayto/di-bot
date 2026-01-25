@@ -3,12 +3,16 @@
 	to a set of predefined commands (input body twist, adjust gain, potentially
 	a set of menu options, etc.
 
-	this file will write to SharedValues::gain, and will publish input twist
-	commands to the "input_cmd" topic (to be consumed by the controller node).
+	this module will publish input twist commands to the "input_cmd" topic 
+	(to be consumed by the controller node).
+
+	would be nice to be able to handle compound inputs, but this would probably
+	require looking for key pressed/key released events, which sounds a lot
+	more complicated than i really want to get into here
 
 	why not use teleop_twist_keyboard? because i hate myself that's why
 
-auth: @dchayto
+	auth: @dchayto
 */
 
 #include <functional>	// for std::bind
@@ -82,7 +86,6 @@ void KeyboardHandlerNode::onKBTimer()
 	kbTwist.linear.y = 0;
 	kbTwist.angular.z = 0;
 
-	// would be nice to be able to handle compound inputs... should look into this
 	using namespace KeyboardConstants;	// kb mappings
 	using namespace InputConstants;		// ISR2
 	switch (ch)	{

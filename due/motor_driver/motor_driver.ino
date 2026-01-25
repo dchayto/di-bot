@@ -15,15 +15,19 @@
 #include "include/pin_defines.hpp"
 #include "include/cmd_flag.hpp"
 #include "include/encoder.hpp"
-#include "UARTmsgs.hpp"
+#include "serialMSG.hpp"
 
-static UARTmsgs::WheelSpeed ws { };
+static serialMSG::WheelSpeed ws { };
 static uint8_t MOTOR_PWM[4] { 0, 0, 0, 0 };
 static int8_t DDIR[4] { 1, 1, 1, 1 }; 	// 1 for fwd, -1 for bkwd
 static const int ENCODER_TIMER { 1000 }; 	// 1 sec freq for sending enc data
 
 inline void drive()	{
+	// for now, just print wheelspeed commands to console
+
+	/* COMMENTING OUT TO TEST MESSAGE PASSING
 	// drive pins based on current status of control vars
+	generatePWM();
 	analogWrite(FR_PWM, MOTOR_PWM[0]);
 	analogWrite(FR_REV, DDIR[0]);
 
@@ -35,9 +39,10 @@ inline void drive()	{
 	
 	analogWrite(FR_PWM, MOTOR_PWM[3]);
 	analogWrite(FR_REV, DDIR[3]);
+	*/
 }
 
-void generatePWM()	{
+inline void generatePWM()	{
 	// send pwm commands based on current input ws, state of PWM array, and 
 	// reverse flags, taking old PWM array for starting point
 
@@ -65,7 +70,7 @@ void adjustPWM()	{
 }
 
 void setup() {
-	// configure UART port
+	// configure serial port
 	Serial.begin(57600); 	// ensure this matches baud rate on pi
 	
 	// set pins to safe state, initialize as req'd (set as input/output, etc.)
@@ -82,34 +87,69 @@ void setup() {
 }
 
 void loop() {
-	/*
-	// TESTING BASIC COMMS - DELETE AFTERWARDS	
-	char i {};
-	if (Serial.available())	{
-		Serial.readBytes(&i, 1);	
-		Serial.write(&i, 1);	
+	// SAFETY TIMEOUT ON MOTORS
+	static unsigned long motorTimer { millis() };
+	static constexpr unsigned long MOTOR_TIMEOUT { 1500 }; // time out after 1.5s
+	if ((millis() - motorTimer) > MOTOR_TIMEOUT)	{
+		ws.setWheelSpeed(0, 0, 0, 0);
+		drive();
 	}
-	*/
 
-	// check for serial data on UART port
-	if (Serial.available() >= ws.MSG_SIZE)	{
-		if (Serial.readBytes(ws.msg, ws.MSG_SIZE) == ws.MSG_SIZE)	{
-			ws.decodeMsg();
-			CMD_FLAG |= WHEELCMD_RECEIVED;	// note that command recieved
-			Serial.write(ws.msg, UARTmsgs::WheelSpeed::MSG_SIZE);
-		}
+
+	using namespace serialMSG;
+
+	// NOTE: arduino serial buffer is 64 byte
+	// NOTE: ring buffer MUST be power of 2 for bitwise math to work
+	static constexpr uint8_t BUFFER_SIZE { 64 }; // enough for 2 messages
+	static char input_buffer[BUFFER_SIZE];	// ring buffer for serial data 
+	static uint8_t head { 0 };	// head (write) for buffer)
+	static uint8_t tail { 0 };	// tail (read) for buffer
+
+ 	// if data in system buffer, read into ring buffer 
+	while (Serial.available())	{ 
+		input_buffer[head] = Serial.read();	
+		++head &= (BUFFER_SIZE - 1); // head+=1-(head%BUFFER_SIZE) [0, bufsize-1]
 	}
+
+	// if have a full string available in ring buffer (head is >= ws.MSG_SIZE
+	// pos ahead of tail), look for message between head-MSG_SIZE and tail
+	if ((head > tail ? head - tail : head + BUFFER_SIZE - tail) > ws.MSG_SIZE)	{
+		// starting at HEAD - ws.MSG_SIZE (first possible location for start of 
+		// valid full frame), look backwards through input buffer for start of
+		// frame (i.e., check for magic number), stopping if tail reached
+		
+		static uint8_t searchpos;
+		// start at position of head less one message
+		searchpos = (head - WheelSpeed.MSG_SIZE) & (BUFFER_SIZE - 1);
+			
+		for (uint8_t searchidx {searchpos}, uint8_t timeout {0}
+				; timeout < WheelSpeed.FRAME_SIZE; ++timeout)	{
+			if (searchidx == tail) break; // MAKE SURE NOT GOING PAST TAIL
+
+			if (input_buffer[searchidx] == static_cast<char>(WheelSpeed.MAGIC_NUMBER))	{
+				// magic number found; start of message
+				// read MSG_SIZE worth of bytes from ring buf to ws.msg; process message
+				for (uint8_t copyIdx {0}; copyIdx <= WheelSpeed.MSG_SIZE; ++copyIdx)	{
+					++searchidx &= (BUFFER_SIZE - 1); // starts on MN: +1->msg start
+					ws.msg[copyIdx] = input_buffer[searchidx];
+				}
+				
+				CMD_FLAG |= WHEELCMD_RECEIVED;	// note that command recieved
+				break;	// stop loop early; found start of message	
+			}	else	{
+				// magic number not found; keep looking until end condition
+				--searchpos &= BUFFER_SIZE - 1;	// go back 1 position in ring
+			}
+		}
+		tail = searchpos;	// set tail to latest parsed value
+	} // end of buffer parsing
 
 	// if command to wheels received, handle now
 	if (CMD_FLAG & WHEELCMD_RECEIVED)	{
-		// send command to motors
-		//drive(); // UNCOMMENT LATER
-
-		// testing message passing - delete afterwards
-		//Serial.write(ws.msg, UARTmsgs::WheelSpeed::MSG_SIZE);
-
-		// unset flag
-		CMD_FLAG |= WHEELCMD_RECEIVED;	
+		ws.decodeMsg();				// process string message into wheelspeeds
+		drive();						// send command to motors
+		CMD_FLAG |= WHEELCMD_RECEIVED;	// unset flag
+		motorTimer = millis();			// reset timer
 	}
 
 
@@ -127,7 +167,7 @@ void loop() {
 	// - may just do here)
 
 	// scheduling sending data
-	static long timeOfLastSend { millis() };
+	static unsigned long timeOfLastSend { millis() };
 	if ((millis() - timeOfLastSend) > ENCODER_TIMER)	{
 		timeOfLastSend = millis();	// reset timer
 		//Serial.write(buffer, length);
