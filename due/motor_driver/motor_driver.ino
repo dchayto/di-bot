@@ -11,6 +11,7 @@
 */
 
 #include <cstdint>
+#include <bitset>
 
 #include "include/pin_defines.hpp"
 #include "include/cmd_flag.hpp"
@@ -117,39 +118,37 @@ void loop() {
 		// starting at HEAD - ws.MSG_SIZE (first possible location for start of 
 		// valid full frame), look backwards through input buffer for start of
 		// frame (i.e., check for magic number), stopping if tail reached
-		
 		static uint8_t searchpos;
 		// start at position of head less one message
-		searchpos = (head - WheelSpeed.MSG_SIZE) & (BUFFER_SIZE - 1);
-			
-		for (uint8_t searchidx {searchpos}, uint8_t timeout {0}
-				; timeout < WheelSpeed.FRAME_SIZE; ++timeout)	{
+		searchpos = (head - WheelSpeed::MSG_SIZE) & (BUFFER_SIZE - 1);
+		for (uint8_t searchidx {searchpos}, timeout {0}
+				; timeout < WheelSpeed::MSG_SIZE; ++timeout)	{
 			if (searchidx == tail) break; // MAKE SURE NOT GOING PAST TAIL
-
-			if (input_buffer[searchidx] == static_cast<char>(WheelSpeed.MAGIC_NUMBER))	{
+			if (input_buffer[searchidx] == static_cast<char>(WheelSpeed::MAGIC_NUMBER))	{
 				// magic number found; start of message
 				// read MSG_SIZE worth of bytes from ring buf to ws.msg; process message
-				for (uint8_t copyIdx {0}; copyIdx <= WheelSpeed.MSG_SIZE; ++copyIdx)	{
-					++searchidx &= (BUFFER_SIZE - 1); // starts on MN: +1->msg start
+				for (uint8_t copyIdx {0}; copyIdx <= WheelSpeed::MSG_SIZE; ++copyIdx)	{
 					ws.msg[copyIdx] = input_buffer[searchidx];
+					++searchidx &= (BUFFER_SIZE - 1); 
 				}
-				
 				CMD_FLAG |= WHEELCMD_RECEIVED;	// note that command recieved
 				break;	// stop loop early; found start of message	
 			}	else	{
 				// magic number not found; keep looking until end condition
-				--searchpos &= BUFFER_SIZE - 1;	// go back 1 position in ring
+				--searchidx &= BUFFER_SIZE - 1;	// go back 1 position in ring
 			}
 		}
 		tail = searchpos;	// set tail to latest parsed value
 	} // end of buffer parsing
 
-	// if command to wheels received, handle now
+
+// if command to wheels received, handle now
 	if (CMD_FLAG & WHEELCMD_RECEIVED)	{
 		ws.decodeMsg();				// process string message into wheelspeeds
 		drive();						// send command to motors
 		CMD_FLAG |= WHEELCMD_RECEIVED;	// unset flag
 		motorTimer = millis();			// reset timer
+		//Serial.println(ws.msg); // for testing message passing
 	}
 
 

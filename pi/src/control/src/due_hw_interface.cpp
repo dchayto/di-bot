@@ -23,7 +23,9 @@
 
 #include "serialMSG.hpp"
 
-#undef TESTING		// outputs additional messages to help with debugging
+// outputs additional messages to help with debugging
+#undef SUBSCRIPTION_RECEIVE_TESTING
+#undef MC_MESSAGE_TESTING
 
 class DueInterfaceNode : public rclcpp::Node
 {
@@ -41,13 +43,26 @@ public:
 				// set ws_ based on received message, send to due
 				this->ws_.setWheelSpeed(wsMsg.front_right, wsMsg.front_left, 
 							wsMsg.back_right, wsMsg.back_left);
-				writeSerial(serialMSG::WheelSpeed::MAGIC_NUMBER + this->ws_.msg, serialMSG::WheelSpeed::FRAME_SIZE);
-				#ifdef TESTING
+				writeSerial(this->ws_.msg, serialMSG::WheelSpeed::MSG_SIZE);
+
+
+				/////////////////////  TESTING MESSAGES //////////////////////
+				#ifdef SUBSCRIPTION_RECEIVE_TESTING
 				RCLCPP_INFO(this->get_logger(),
 						"Received wheelspeed: <%d %d %d %d>"
 						, wsMsg.front_right, wsMsg.front_left
 						, wsMsg.back_right, wsMsg.back_left); 
 				#endif
+				#ifdef MC_MESSAGE_TESTING
+				RCLCPP_INFO_STREAM(this->get_logger(), "Sending message: "
+					<< this->ws_.msg);
+				sleep(1);	// testing message passing with due; delete later
+				char msgReturn [64];
+				readSerial(msgReturn, 64);
+				RCLCPP_INFO_STREAM(this->get_logger(), "Receiving message: "
+					<< msgReturn);
+				#endif
+				//////////////////////////////////////////////////////////////
 			});
 		
 		/* commenting out until actually using encoder odom
@@ -134,7 +149,7 @@ void DueInterfaceNode::openPort()	{
 }
 
 void DueInterfaceNode::readSerial(char * buf, size_t bufsize)	{
-	read(serialPort, buf, bufsize);
+	std::cout << "bytes read: " << read(serialPort, buf, bufsize) << std::endl;
 }
 
 void DueInterfaceNode::writeSerial(char * msg, size_t msgsize)	{
