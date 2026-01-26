@@ -28,7 +28,8 @@
 #include "rclcpp/rclcpp.hpp"
 #include "geometry_msgs/msg/twist.hpp"
 
-#include "input.hpp"
+#include "kb_input.hpp"
+#include "kb_screen_handler.hpp"
 
 #undef TESTING
 

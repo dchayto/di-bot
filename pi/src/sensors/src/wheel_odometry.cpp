@@ -2,10 +2,10 @@
 	ros node for handling wheel odometry
 
 	node will take in differential encoder values (delta since last timestep)
-	and naively calculate estimated change in robot pose
+	and naively calculate estimated pose and twist of robot
 
-	pose will be published on wheel odometry topic, to be consumed by sensor
-	fusion node as part of estimating  actual robot motion 
+	data will be published on wheel odometry topic, to be consumed by sensor
+	fusion node as part of estimating actual robot motion 
 
 	auth: @dchayto
 */
@@ -25,6 +25,8 @@ public:
 
 
 		// PUBLISHERS
+		// to start, probably just worry about getting twist publishing since
+		// that's what matters for C-L control - pose can wait for plan/map
 		odom_publisher = this->create_publisher<nav_msgs::msg::Odometry>("odom", 10);
 		encoderTimer = this->create_wall_timer(1s, 
 			[this]()
