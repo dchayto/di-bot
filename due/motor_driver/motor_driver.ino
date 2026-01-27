@@ -11,7 +11,6 @@
 */
 
 #include <cstdint>
-#include <bitset>
 
 #include "include/pin_defines.hpp"
 #include "include/cmd_flag.hpp"
@@ -21,7 +20,6 @@
 static serialMSG::WheelSpeed ws { };
 static uint8_t MOTOR_PWM[4] { 0, 0, 0, 0 };
 static int8_t DDIR[4] { 1, 1, 1, 1 }; 	// 1 for fwd, -1 for bkwd
-static const int ENCODER_TIMER { 1000 }; 	// 1 sec freq for sending enc data
 
 inline void drive()	{
 	// for now, just print wheelspeed commands to console
@@ -165,6 +163,7 @@ void loop() {
 	// (not sure if distance travelled should be calculated here or elsewhere
 	// - may just do here)
 
+	static const int ENCODER_TIMER { 1000 }; 	// 1 sec freq for sending enc data
 	// scheduling sending data
 	static unsigned long timeOfLastSend { millis() };
 	if ((millis() - timeOfLastSend) > ENCODER_TIMER)	{

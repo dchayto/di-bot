@@ -13,7 +13,7 @@
 #include <cstdint>
 
 // largest data string: "-128 -128 -128 -128" [19]
-#define WHEELSPEED_MSG_SIZE 24
+#define WHEELSPEED_MSG_SIZE 22
 
 namespace serialMSG		{
 	struct WheelSpeed	{	 // 

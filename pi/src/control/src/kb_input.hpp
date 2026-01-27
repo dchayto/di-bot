@@ -23,10 +23,13 @@ namespace KeyboardConstants	{
 	inline constexpr char TRN_RHT	{'.'};
 	
 	// gain adjustment
-	inline constexpr char GAINUP	{'['};
-	inline constexpr char GAINUP10	{'{'};
-	inline constexpr char GAINDN	{']'};
-	inline constexpr char GAINDN10	{'}'};
+	inline constexpr char GAINUP	{']'};
+	inline constexpr char GAINUP10	{'}'};
+	inline constexpr char GAINDN	{'['};
+	inline constexpr char GAINDN10	{'{'};
+	
+	// quit program
+	inline constexpr char QT		{'~'};
 }
 
 #endif

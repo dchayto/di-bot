@@ -39,6 +39,11 @@ public:
 	KeyboardHandlerNode()
 	 : Node("kb_handler_node")
 	{
+		// initialize screen & write default gain
+		ScreenHandler::initScreen();
+		ScreenHandler::writeGain(gain);
+		ScreenHandler::hideCursor();
+		
 		// get starting termios settings
 		if (tcgetattr(STDIN_FILENO, &ogTermios) != 0)	{
 			RCLCPP_ERROR_STREAM(this->get_logger(),
@@ -46,18 +51,20 @@ public:
 		}
 		
 		configureRaw(ogTermios);	// PBV; don't want to change ogTermios
-		
+
 		// PUBLISHERS	
 		using namespace std::chrono_literals;
 		input_twist_publisher 
 		    = this->create_publisher<geometry_msgs::msg::Twist>("input_cmd", 1);
-		inputTimer = this->create_wall_timer(500ms,
+		inputTimer = this->create_wall_timer(100ms,
 			std::bind(&KeyboardHandlerNode::onKBTimer, this));
 	} // </constructor>
 
 	~KeyboardHandlerNode()	{
 		RCLCPP_INFO(this->get_logger(), "KeyboardHandlerNode shutting down");
 		tcsetattr(STDIN_FILENO, TCSAFLUSH, &ogTermios); // restore termios settings
+		ScreenHandler::wipe();
+		ScreenHandler::showCursor();
 	} // </destructor>
 
 private:
@@ -91,10 +98,10 @@ void KeyboardHandlerNode::onKBTimer()
 	using namespace InputConstants;		// ISR2
 	switch (ch)	{
 		// basic movements:
-		case FWD:	 	kbTwist.linear.x =  gain; 	break;
-		case LFT: 		kbTwist.linear.y = -gain; 	break;
-		case REV: 		kbTwist.linear.x = -gain; 	break;
-		case RHT:		kbTwist.linear.y =  gain; 	break;
+		case FWD:	 	kbTwist.linear.x =  gain; 		break;
+		case LFT: 		kbTwist.linear.y = -gain; 		break;
+		case REV: 		kbTwist.linear.x = -gain; 		break;
+		case RHT:		kbTwist.linear.y =  gain; 		break;
 		case FWD_RHT: 	kbTwist.linear.x =  gain*ISR2;
 						kbTwist.linear.y =  gain*ISR2; 	break;
 		case FWD_LFT:	kbTwist.linear.x =  gain*ISR2; 
@@ -103,26 +110,30 @@ void KeyboardHandlerNode::onKBTimer()
 						kbTwist.linear.y = -gain*ISR2;	break;
 		case REV_RHT:	kbTwist.linear.x = -gain*ISR2;
 						kbTwist.linear.y =  gain*ISR2;	break;
-		case TRN_LFT: 	kbTwist.angular.z = -gain;	break;
-		case TRN_RHT: 	kbTwist.angular.z =  gain;	break;
+		case TRN_LFT: 	kbTwist.angular.z = -gain;		break;
+		case TRN_RHT: 	kbTwist.angular.z =  gain;		break;
 		case GAINUP:	
 			gain += 1;
 			if (gain > 127) gain = 127;
+			ScreenHandler::writeGain(gain);
 			break;
 		case GAINUP10:	// increase gain by 10
 			gain += 10;
 			if (gain > 127) gain = 127;		// uint_8, so no chance of overflow
+			ScreenHandler::writeGain(gain);
 			break;
 		case GAINDN:	// decrease gain by 1
 			if (gain <= 1) { gain = 0; }
-			else { gain += 10; }
+			else { gain -= 1; }
+			ScreenHandler::writeGain(gain);
 			break;
 		case GAINDN10:	// decrease gain by 10
 			if (gain <= 10) { gain = 0; }
 			else { gain -= 10; }
+			ScreenHandler::writeGain(gain);
 			break;
-		case '~': rclcpp::shutdown(); break; // can't ctrl-c out of this lol
-		case 'x':	// VEHICLE STOP
+		case QT: rclcpp::shutdown(); break; // can't ctrl-c out of this lol
+		case STP:	// VEHICLE STOP
 		default: break; 	// invalid command; send {0} twist cmd
 	}
 
