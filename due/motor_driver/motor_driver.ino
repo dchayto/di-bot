@@ -23,8 +23,6 @@ static int8_t DDIR[4] { 1, 1, 1, 1 }; 	// 1 for fwd, -1 for bkwd
 
 inline void drive()	{
 	// for now, just print wheelspeed commands to console
-
-	/* COMMENTING OUT TO TEST MESSAGE PASSING
 	// drive pins based on current status of control vars
 	generatePWM();
 	analogWrite(FR_PWM, MOTOR_PWM[0]);
@@ -38,7 +36,6 @@ inline void drive()	{
 	
 	analogWrite(FR_PWM, MOTOR_PWM[3]);
 	analogWrite(FR_REV, DDIR[3]);
-	*/
 }
 
 inline void generatePWM()	{
@@ -72,6 +69,9 @@ void setup() {
 	// configure serial port
 	Serial.begin(57600); 	// ensure this matches baud rate on pi
 	
+	// clear input buffer
+	while (Serial.available()) Serial.read();
+	
 	// set pins to safe state, initialize as req'd (set as input/output, etc.)
 	pinMode(FR_REV, OUTPUT);
 	pinMode(FL_REV, OUTPUT);
@@ -82,7 +82,6 @@ void setup() {
 	pinMode(FL_ENC, INPUT);
 	pinMode(BR_ENC, INPUT);
 	pinMode(BL_ENC, INPUT);
-
 }
 
 void loop() {
@@ -99,7 +98,7 @@ void loop() {
 
 	// NOTE: arduino serial buffer is 64 byte
 	// NOTE: ring buffer MUST be power of 2 for bitwise math to work
-	static constexpr uint8_t BUFFER_SIZE { 64 }; // enough for 2 messages
+	static constexpr uint8_t BUFFER_SIZE { 32 }; // enough for 3 messages
 	static char input_buffer[BUFFER_SIZE];	// ring buffer for serial data 
 	static uint8_t head { 0 };	// head (write) for buffer)
 	static uint8_t tail { 0 };	// tail (read) for buffer
@@ -122,10 +121,10 @@ void loop() {
 		for (uint8_t searchidx {searchpos}, timeout {0}
 				; timeout < WheelSpeed::MSG_SIZE; ++timeout)	{
 			if (searchidx == tail) break; // MAKE SURE NOT GOING PAST TAIL
-			if (input_buffer[searchidx] == static_cast<char>(WheelSpeed::MAGIC_NUMBER))	{
+			if (input_buffer[searchidx] == WheelSpeed::MAGIC_NUMBER)	{
 				// magic number found; start of message
 				// read MSG_SIZE worth of bytes from ring buf to ws.msg; process message
-				for (uint8_t copyIdx {0}; copyIdx <= WheelSpeed::MSG_SIZE; ++copyIdx)	{
+				for (uint8_t copyIdx {0}; copyIdx < WheelSpeed::MSG_SIZE; ++copyIdx)	{
 					ws.msg[copyIdx] = input_buffer[searchidx];
 					++searchidx &= (BUFFER_SIZE - 1); 
 				}
@@ -140,13 +139,13 @@ void loop() {
 	} // end of buffer parsing
 
 
-// if command to wheels received, handle now
+	// if command to wheels received, handle now
 	if (CMD_FLAG & WHEELCMD_RECEIVED)	{
 		ws.decodeMsg();				// process string message into wheelspeeds
 		drive();						// send command to motors
-		CMD_FLAG |= WHEELCMD_RECEIVED;	// unset flag
+		CMD_FLAG &= ~WHEELCMD_RECEIVED;	// unset flag
 		motorTimer = millis();			// reset timer
-		//Serial.println(ws.msg); // for testing message passing
+		//Serial.println(ws.msg); 		// testing message passing
 	}
 
 

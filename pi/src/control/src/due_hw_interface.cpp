@@ -45,7 +45,6 @@ public:
 							wsMsg.back_right, wsMsg.back_left);
 				writeSerial(this->ws_.msg, serialMSG::WheelSpeed::MSG_SIZE);
 
-
 				/////////////////////  TESTING MESSAGES //////////////////////
 				#ifdef SUBSCRIPTION_RECEIVE_TESTING
 				RCLCPP_INFO(this->get_logger(),
@@ -55,12 +54,20 @@ public:
 				#endif
 				#ifdef MC_MESSAGE_TESTING
 				RCLCPP_INFO_STREAM(this->get_logger(), "Sending message: "
-					<< this->ws_.msg);
-				sleep(1);	// testing message passing with due; delete later
-				char msgReturn [64];
-				readSerial(msgReturn, 64);
+					<< (ws_.msg[0]) << " "
+					<< static_cast<int>(ws_.msg[1]) << " "
+					<< static_cast<int>(ws_.msg[2]) << " "
+					<< static_cast<int>(ws_.msg[3]) << " "
+					<< static_cast<int>(ws_.msg[4]));
+				sleep(1);	
+				char msgReturn [32];
+				readSerial(msgReturn, 32);
 				RCLCPP_INFO_STREAM(this->get_logger(), "Receiving message: "
-					<< msgReturn);
+					<< (msgReturn[0]) << " "
+					<< static_cast<int>(msgReturn[1]) << " "
+					<< static_cast<int>(msgReturn[2]) << " "
+					<< static_cast<int>(msgReturn[3]) << " "
+					<< static_cast<int>(msgReturn[4]));
 				#endif
 				//////////////////////////////////////////////////////////////
 			});
@@ -157,23 +164,6 @@ void DueInterfaceNode::writeSerial(char * msg, size_t msgsize)	{
 }
 
 int main(int argc, char** argv)	{
-	/* FOR TESTING BASIC MESSAGE PASSING 
-	openPort();
-	// NOTE: arduino seems to need ~150ms setup time more than pi to init port
-	std::this_thread::sleep_for(std::chrono::milliseconds(100)); 
-	serialMSG::WheelSpeed k { 0, 0, 0, 0 };
-	for (int i = -128; i <= 127; ++i)	{
-		k.FR = k.FL = k.BR = k.BL = i;
-		k.encodeMsg();
-		std::cout << "Sending message: " << k.msg << std::endl;
-		writeSerial(k.msg, serialMSG::WheelSpeed::MSG_SIZE);
-		std::this_thread::sleep_for(std::chrono::milliseconds(100)); 
-		readSerial(k.msg, serialMSG::WheelSpeed::MSG_SIZE);
-		std::cout << "Receiving message: " << k.msg << std::endl << std::endl;
-		std::this_thread::sleep_for(std::chrono::milliseconds(100)); 
-	}
-	closePort();
-	*/
 	
 	rclcpp::init(argc, argv);
 	auto dueNode = std::make_shared<DueInterfaceNode>();
