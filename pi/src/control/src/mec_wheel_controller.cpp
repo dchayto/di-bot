@@ -1,4 +1,4 @@
-/*							mech_wheel_controller.cpp				     	//
+/*							mec_wheel_controller.cpp				     	//
 	ros node for robot controller 
 
 	node will take in a body twist vector representing an input command, as 
@@ -7,6 +7,10 @@
 
 	robot will then convert these values into wheelspeed commands, and send
 	to due's hardware interface node 
+
+	note: i feel like a lot of these calculations could/should be using
+	floats, but ROS messages seem to use double (f64), so keeping code matching
+	to prevent accidental type conversions
 
 	auth: @dchayto
 */
@@ -19,7 +23,8 @@
 #include "geometry_msgs/msg/twist.hpp"
 #include "control/msg/wheelspeed.hpp"
 
-#include "mec_wheel_controller.hpp" 	// splitting up helper functions/consts
+#include "mec_wheel_controller.hpp" 	// non-member helper functions/consts
+#include "PID.hpp"	// generic PID controller structure
 
 class MecWheelControllerNode : public rclcpp::Node
 {
@@ -44,38 +49,52 @@ public:
 				belTwist.y = btMsg.linear.y;
 				belTwist.w = btMsg.angular.z;
 			});
-	
+
+		prev = this->get_clock()->now();	// initialize timestep variable
 
 		// PUBLISHERS
 		using namespace std::chrono_literals;
 		ws_publisher = this->create_publisher<control::msg::Wheelspeed>("wheelspeed", 1);
-		wsTimer = this->create_wall_timer(1s,
+		wsTimer = this->create_wall_timer(50ms,
 			[this]()
 			{
-				// get control signal; for now, just considering direction of
-				// velocity vectors, not magnitude
+				// for now, just considering direction of vel vectors, not mag
 
 				// pre-computing scale factor; equivalent to norm both vectors,
 				// then multiply by magnitude of cmd vector
 				static double twistSF;
 				twistSF = cmdTwist.getLength() / belTwist.getLength(); 
+			
+				// if command changed, reset PID params	
+				static twist prevTwist {};
+				if (prevTwist.x == cmdTwist.x)	{ vxPID.reset(); }
+				if (prevTwist.y == cmdTwist.y)	{ vyPID.reset(); }
+				if (prevTwist.w == cmdTwist.w)	{ wzPID.reset(); }
+				prevTwist = cmdTwist;
 
-				ctrlTwist.x = cmdTwist.x - twistSF*belTwist.x;
-				ctrlTwist.y = cmdTwist.y - twistSF*belTwist.y;
-				ctrlTwist.w = cmdTwist.w - twistSF*belTwist.w;
+				// get timestep	
+				static rclcpp::Time now; 
+				static double dt;
+				now = this->get_clock()->now();	
+				dt = (now - prev).seconds();
+				prev = now;
+
+				// generate error signal then send to PIDs
+				ctrlTwist.x = vxPID.correct(cmdTwist.x - twistSF*belTwist.x, dt);
+				ctrlTwist.y = vyPID.correct(cmdTwist.y - twistSF*belTwist.y, dt);
+				ctrlTwist.w = wzPID.correct(cmdTwist.w - twistSF*belTwist.w, dt);
 
 				// going to worry about scaling on microcontroller end, 
 				// since that's what's actually defining the limit
 
-				// using control signal, get wheelspeeds
+				// using controller output, get wheelspeeds
 				auto wsMsg = control::msg::Wheelspeed();
-				wsMsg.front_right 	= this->getFrontRightWS();
-				wsMsg.front_left 	= this->getFrontLeftWS();
-				wsMsg.back_right 	= this->getBackRightWS();
-				wsMsg.back_left 	= this->getBackLeftWS();
+				wsMsg.front_right 	= getFrontRightWS();
+				wsMsg.front_left 	= getFrontLeftWS();
+				wsMsg.back_right 	= getBackRightWS();
+				wsMsg.back_left 	= getBackLeftWS();
 				this->ws_publisher->publish(wsMsg);
 			});
-		
 	} // </constructor>
 
 	~MecWheelControllerNode()
@@ -92,17 +111,22 @@ private:
 	twist belTwist {0.0, 0.0, 0.0}; // belief twist [x, y, w]
 	twist ctrlTwist {0.0, 0.0, 0.0};	// control signal twist [x, y, w]
 
+	// note: gain order is kp, ki, kd. don't love this, consider cleaning up
+	PID vxPID{0.2, 0.0, 0.0};
+	PID vyPID{0.2, 0.0, 0.0};
+	PID wzPID{0.2, 0.0, 0.0};
+
 	rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr input_twist_subscription;
 	rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr measured_twist_subscription;
 	rclcpp::Publisher<control::msg::Wheelspeed>::SharedPtr ws_publisher;
 	rclcpp::TimerBase::SharedPtr wsTimer;
+	rclcpp::Time prev;
 
 	// helper functions
 	int8_t getFrontRightWS();
 	int8_t getFrontLeftWS();
 	int8_t getBackRightWS();
 	int8_t getBackLeftWS();
-
 }; // class
 
 

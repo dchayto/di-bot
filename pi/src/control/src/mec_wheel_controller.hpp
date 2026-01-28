@@ -1,4 +1,4 @@
-/*							mech_wheel_controller.hpp						//
+/*							mec_wheel_controller.hpp						//
 	helper functions, variable declarations, structs definitions for mech wheel
 	controller
 
