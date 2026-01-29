@@ -16,8 +16,10 @@
 */
 
 #include <cstdint>
-#include <algorithm>
 #include <chrono>
+#include <cmath>		// for std::abs
+#include <limits>		// for std::numeric_limits<int8_t>::max()	
+#include <algorithm> 	// for std::max
 
 #include "rclcpp/rclcpp.hpp"
 #include "geometry_msgs/msg/twist.hpp"
@@ -83,16 +85,30 @@ public:
 				ctrlTwist.x = vxPID.correct(cmdTwist.x - twistSF*belTwist.x, dt);
 				ctrlTwist.y = vyPID.correct(cmdTwist.y - twistSF*belTwist.y, dt);
 				ctrlTwist.w = wzPID.correct(cmdTwist.w - twistSF*belTwist.w, dt);
+				
+				// using controller output, get wheelspeeds				
+				static double frUS, flUS, brUS, blUS; 
+				frUS = getFrontRightWS();
+				flUS = getFrontLeftWS();
+				brUS = getBackRightWS();
+				blUS = getBackLeftWS();
 
-				// going to worry about scaling on microcontroller end, 
-				// since that's what's actually defining the limit
-
-				// using controller output, get wheelspeeds
+				// scale wheelspeeds for message
+				// surely there's a better way to do this... oh well!
+				static double wheelSF;
+				wheelSF = std::max({std::abs(frUS), std::abs(flUS),
+							std::abs(brUS), std::abs(blUS)});
+				if (wheelSF > static_cast<double>(std::numeric_limits<int8_t>::max()))
+				{
+			      wheelSF=static_cast<double>(std::numeric_limits<int8_t>::max())/wheelSF;
+				}	else	{ wheelSF = 1.0; }
+				
+				// publish wheelspeeds
 				auto wsMsg = control::msg::Wheelspeed();
-				wsMsg.front_right 	= getFrontRightWS();
-				wsMsg.front_left 	= getFrontLeftWS();
-				wsMsg.back_right 	= getBackRightWS();
-				wsMsg.back_left 	= getBackLeftWS();
+				wsMsg.front_right 	= frUS * wheelSF;
+				wsMsg.front_left 	= flUS * wheelSF;
+				wsMsg.back_right 	= brUS * wheelSF; 
+				wsMsg.back_left 	= blUS * wheelSF; 
 				this->ws_publisher->publish(wsMsg);
 			});
 	} // </constructor>
@@ -111,7 +127,8 @@ private:
 	twist belTwist {0.0, 0.0, 0.0}; // belief twist [x, y, w]
 	twist ctrlTwist {0.0, 0.0, 0.0};	// control signal twist [x, y, w]
 
-	// note: gain order is kp, ki, kd. don't love this, consider cleaning up
+	// note: gain order is kp, ki, kd
+	// don't love this, consider cleaning up
 	PID vxPID{0.2, 0.0, 0.0};
 	PID vyPID{0.2, 0.0, 0.0};
 	PID wzPID{0.2, 0.0, 0.0};
@@ -123,10 +140,10 @@ private:
 	rclcpp::Time prev;
 
 	// helper functions
-	int8_t getFrontRightWS();
-	int8_t getFrontLeftWS();
-	int8_t getBackRightWS();
-	int8_t getBackLeftWS();
+	double getFrontRightWS();
+	double getFrontLeftWS();
+	double getBackRightWS();
+	double getBackLeftWS();
 }; // class
 
 
@@ -164,7 +181,7 @@ private:
 //  where g = tan(MEC_ANGLE) / r
 //
 // 	NEED TO UPDATE THIS CODE TO USE STATIC TF2 PUBLISHER
-int8_t MecWheelControllerNode::getFrontRightWS()
+double MecWheelControllerNode::getFrontRightWS()
 {
 	// remember to use +MEC_ANGLE, +X_WHEEL, -Y_WHEEL
 	static const double G 			{ std::tan(+MEC_ANGLE) / WHEEL_RADIUS };
@@ -179,7 +196,7 @@ int8_t MecWheelControllerNode::getFrontRightWS()
 	return v_drive / WHEEL_RADIUS;
 }
 
-int8_t MecWheelControllerNode::getFrontLeftWS()
+double MecWheelControllerNode::getFrontLeftWS()
 {
 	// remember to use -MEC_ANGLE, +X_WHEEL, +Y_WHEEL
 	static const double G 			{ std::tan(-MEC_ANGLE) / WHEEL_RADIUS };
@@ -194,7 +211,7 @@ int8_t MecWheelControllerNode::getFrontLeftWS()
 	return v_drive / WHEEL_RADIUS;
 }
 
-int8_t MecWheelControllerNode::getBackRightWS()
+double MecWheelControllerNode::getBackRightWS()
 {
 	// remember to use -MEC_ANGLE, -X_WHEEL, -Y_WHEEL
 	static const double G 			{ std::tan(-MEC_ANGLE) / WHEEL_RADIUS };
@@ -209,7 +226,7 @@ int8_t MecWheelControllerNode::getBackRightWS()
 	return v_drive / WHEEL_RADIUS;
 }
 
-int8_t MecWheelControllerNode::getBackLeftWS()
+double MecWheelControllerNode::getBackLeftWS()
 {
 	// remember to use +MEC_ANGLE, -X_WHEEL, +Y_WHEEL
 	static const double G 			{ std::tan(+MEC_ANGLE) / WHEEL_RADIUS };
