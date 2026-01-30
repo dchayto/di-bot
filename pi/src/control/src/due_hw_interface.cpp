@@ -124,12 +124,14 @@ void DueInterfaceNode::openPort()	{
 	if (serialPort < 0)	{ // should return error code, or set an isValid param
 		RCLCPP_ERROR_STREAM(this->get_logger(), 
 			"Error " << errno << ": " << std::strerror(errno));
+		// should (bare minimum) add an indicator light or something
 	} 
 
 	struct termios tty;
 	if (tcgetattr(serialPort, &tty) != 0)	{ // should return error code
 		RCLCPP_ERROR_STREAM(this->get_logger(),
 			"Error " << errno << ": " << std::strerror(errno));
+		// should add an indicator light or something 
 	}
 
 	// configuring termios; prob don't need a lot of these, but shouldn't hurt
@@ -152,6 +154,7 @@ void DueInterfaceNode::openPort()	{
 	if (tcsetattr(serialPort, TCSADRAIN, &tty) != 0)	{
 		RCLCPP_ERROR_STREAM(this->get_logger(),
 			"Error " << errno << ": " << std::strerror(errno)); 
+		// should set indicator light
 	}
 }
 

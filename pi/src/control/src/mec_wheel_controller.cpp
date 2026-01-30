@@ -28,7 +28,8 @@
 #include "include/mec_wheel_controller.hpp" 	// non-member helpers/consts
 #include "include/PID.hpp"	// generic PID controller structure
 
-#define MESSAGE_TESTING			// enables screen writeouts
+#define MESSAGE_TESTING			// enables ROS message writeouts
+#undef CONTROLLER_IO_TESTING	// enables writeouts of controller I/O
 
 class MecWheelControllerNode : public rclcpp::Node
 {
@@ -36,6 +37,7 @@ public:
 	MecWheelControllerNode()
 	 : Node("mech_controller_node")
 	{
+		std::cout << belTwist.x << " " << belTwist.y << " " << belTwist.w << std::endl;
 		// SUBSCRIBERS
 		input_twist_subscription = this->create_subscription<geometry_msgs::msg::Twist>
 			("input_cmd", 1,
@@ -78,6 +80,8 @@ public:
 				// then multiply by magnitude of cmd vector
 				static double twistSF;
 				twistSF = cmdTwist.getLength() / belTwist.getLength(); 
+
+				if (!std::isfinite(twistSF)) { twistSF = 1; } // handle inf/nan
 			
 				// if command changed, reset PID params	
 				static twist prevTwist {};
@@ -98,7 +102,7 @@ public:
 				ctrlTwist.y = vyPID.correct(cmdTwist.y - twistSF*belTwist.y, dt);
 				ctrlTwist.w = wzPID.correct(cmdTwist.w - twistSF*belTwist.w, dt);
 				
-#ifdef MESSAGE_TESTING
+#ifdef CONTROLLER_IO_TESTING
 				RCLCPP_INFO(this->get_logger(), 
 					"Controller output: {vx: %f | vy: %f | w: %f}",
 					ctrlTwist.x, ctrlTwist.y, ctrlTwist.w);
