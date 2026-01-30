@@ -25,8 +25,10 @@
 #include "geometry_msgs/msg/twist.hpp"
 #include "control/msg/wheelspeed.hpp"
 
-#include "mec_wheel_controller.hpp" 	// non-member helper functions/consts
-#include "PID.hpp"	// generic PID controller structure
+#include "include/mec_wheel_controller.hpp" 	// non-member helpers/consts
+#include "include/PID.hpp"	// generic PID controller structure
+
+#define MESSAGE_TESTING			// enables screen writeouts
 
 class MecWheelControllerNode : public rclcpp::Node
 {
@@ -42,6 +44,11 @@ public:
 				cmdTwist.x = icMsg.linear.x;
 				cmdTwist.y = icMsg.linear.y;
 				cmdTwist.w = icMsg.angular.z;
+#ifdef MESSAGE_TESTING
+				RCLCPP_INFO(this->get_logger(), 
+					"Received cmd: {vx: %f | vy: %f | w: %f}",
+					cmdTwist.x, cmdTwist.y, cmdTwist.w);
+#endif
 			});
 		measured_twist_subscription = this->create_subscription<geometry_msgs::msg::Twist>
 			("bel_twist", 1,
@@ -50,6 +57,11 @@ public:
 				belTwist.x = btMsg.linear.x;
 				belTwist.y = btMsg.linear.y;
 				belTwist.w = btMsg.angular.z;
+#ifdef MESSAGE_TESTING
+				RCLCPP_INFO(this->get_logger(), 
+					"Received bel: {vx: %f | vy: %f | w: %f}",
+					belTwist.x, belTwist.y, belTwist.w);
+#endif
 			});
 
 		prev = this->get_clock()->now();	// initialize timestep variable
@@ -86,6 +98,12 @@ public:
 				ctrlTwist.y = vyPID.correct(cmdTwist.y - twistSF*belTwist.y, dt);
 				ctrlTwist.w = wzPID.correct(cmdTwist.w - twistSF*belTwist.w, dt);
 				
+#ifdef MESSAGE_TESTING
+				RCLCPP_INFO(this->get_logger(), 
+					"Controller output: {vx: %f | vy: %f | w: %f}",
+					ctrlTwist.x, ctrlTwist.y, ctrlTwist.w);
+#endif
+
 				// using controller output, get wheelspeeds				
 				static double frUS, flUS, brUS, blUS; 
 				frUS = getFrontRightWS();

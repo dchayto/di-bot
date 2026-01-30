@@ -21,11 +21,11 @@
 #include "rclcpp/rclcpp.hpp"
 #include "control/msg/wheelspeed.hpp"
 
-#include "serialMSG.hpp"
+#include "serialMSG.hpp"	// from common_include folder
 
 // outputs additional messages to help with debugging
-#undef SUBSCRIPTION_RECEIVE_TESTING
-#undef MC_MESSAGE_TESTING
+#define SUBSCRIPTION_RECEIVE_TESTING
+#define MC_MESSAGE_TESTING
 
 class DueInterfaceNode : public rclcpp::Node
 {
@@ -156,7 +156,7 @@ void DueInterfaceNode::openPort()	{
 }
 
 void DueInterfaceNode::readSerial(char * buf, size_t bufsize)	{
-	std::cout << "bytes read: " << read(serialPort, buf, bufsize) << std::endl;
+	read(serialPort, buf, bufsize);
 }
 
 void DueInterfaceNode::writeSerial(char * msg, size_t msgsize)	{

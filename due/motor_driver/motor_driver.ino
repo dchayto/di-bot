@@ -21,10 +21,14 @@ static serialMSG::WheelSpeed ws { };
 static uint8_t MOTOR_PWM[4] { 0, 0, 0, 0 };
 static int8_t DDIR[4] { 1, 1, 1, 1 }; 	// 1 for fwd, -1 for bkwd
 
+#define MESSAGE_TESTING		// for testing message passing/recieving
+#undef DRIVE_ENABLE		// for enabling/disabling PWM commands
+
 inline void drive()	{
 	// for now, just print wheelspeed commands to console
 	// drive pins based on current status of control vars
 	generatePWM();
+#ifdef DRIVE_ENABLE
 	analogWrite(FR_PWM, MOTOR_PWM[0]);
 	analogWrite(FR_REV, DDIR[0]);
 
@@ -36,6 +40,7 @@ inline void drive()	{
 	
 	analogWrite(FR_PWM, MOTOR_PWM[3]);
 	analogWrite(FR_REV, DDIR[3]);
+#endif
 }
 
 inline void generatePWM()	{
@@ -145,7 +150,9 @@ void loop() {
 		drive();						// send command to motors
 		CMD_FLAG &= ~WHEELCMD_RECEIVED;	// unset flag
 		motorTimer = millis();			// reset timer
-		//Serial.println(ws.msg); 		// testing message passing
+#ifdef MESSAGE_TESTING
+		Serial.println(ws.msg); 		// testing message passing
+#endif
 	}
 
 
